@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="jinbid.converter.comn.mapper106.Notice106Dao">
+	
+	<!-- 공고 진행 조회 -->
+	<select id="selectNoticeBase" parameterType="Map" resultType="jinbid.converter.comn.vo.Notice">
+		<![CDATA[   SELECT DISTINCT /*	selectNoticeBase	*/
+					   NoticeNumber as NOTI_NO
+					 , NoticeChasu as NOTI_SEQ
+					 , NoticeName as NOTI_NM 
+					 , a.NoticePart as NOTI_KIND_CD
+					 , InputType as COLCT_METH_CD
+					 , Complete as NOTI_PROG_STAT_CD
+					 , a.NoticeType as NOTI_DSTNCT_CD			/* 공고구분코드 */
+					 , NoticeOrgan as RPSNT_ORGNZ_CD 	/* 대표기관CD * */
+					 , OrganOrder as ORDER_OFFI_CD_NM	/* 발주처코드 * */
+					 , OrganReal as ACTUL_DNTT_CD_NM	/* 실수요기관코드 * */
+ 					, IF(NoticeTime=0, null,FROM_UNIXTIME(NoticeTime)) as NOTI_STRT_DT  
+					, FROM_UNIXTIME(a.StartBidTime) as BDDPR_STRT_DT
+					, FROM_UNIXTIME(a.BidJoinFinishTime) as REGST_FIN_DT
+					, FROM_UNIXTIME(a.CloseBidTime) as BDDPR_FIN_DT
+                     , b.TotalJoiner as BDDPR_PRTC_CMP_CNT
+					 , FROM_UNIXTIME(a.OpenBidTime) as OPBD_DT
+					 , COALESCE(b.ResultPrePrice, a.PrePrice ) as OPBD_PRARG_PRICE
+					 , IF(b.CompanyName='재입찰','4',
+					   IF(b.CompanyName='유찰','3',
+					   IF(c.KeyBaseTable is not null,'5',
+					   IF(b.KeyBaseTable is not null,'2',  '0') ) ) ) as OPBD_STAT_CD	/* 개찰상태코드 0개찰전/1미개찰/2개찰/3유찰/4재입찰/5최종낙찰  */
+					 , IF(RealUpdateTIme = 0 , null, FROM_UNIXTIME(RealUpdateTime)) as  ORDER_OFFI_OPBD_DT /* 발주처개찰일시 */
+					 , IF(ExplainTime = 0,null,FROM_UNIXTIME(ExplainTime)) as SITE_DESC_DT /* 현장설명일시 */
+					 , ExplainPlace as SITE_DESC_PLAC
+					 , AssumPrice as PRESM_AMT
+					 , BasePrice as BASE_AMT
+					 , ContractMethod as CNTR_MTHD_ID
+					 , Grade as SORT_ORDR
+					 , NoticeLowLimit as DWNLMT_RT
+					 , PerLowLimit as MIN_AS_RT
+					 , PerHighLimit as MAX_AS_RT
+					 , CalculationPrice as PRDC_BASE_AMT
+					 , 
+					   IF(a.NoticePart!=0 || NoticeOrgan=24 ,'0', 	/* 물품,용역인 경우 (2018.08.20 13:29)   한국석유공사인경우 (2018.10.24 14:29) 0으로 입력 */
+					  IF(NoticeOrgan=1&&OrderFrom < 2 && OrderFromSecond=5,'3', 
+					   IF(NoticeOrgan=1&&OrderFrom=2,'5', 
+					   IF(NoticeOrgan=1,'1',	 
+					   IF(NoticeOrgan=2&&OrderFromSecond=1, '5', null  )))))  as CFMT_UNDWRT_ST_ID 		/* 적격심사기준ID */
+					 , a.ReBidCount as REBID_NO
+					 , IF(ResultDateTime = 0 , null ,ResultDateTime) as ARSTUDWRT_APPLY_FIN_DT
+					 , Charger as CHRGR_NM
+                     , d.ChargerPart as CHRGR_DEPT_NM  		/*	발주 담당자 부서 */
+ 					 , d.ChargerPhone as CHRGR_TELNO 		/*	발주 담당자 연락처 */
+					 , d.ChargerEmail	as CHRGR_EMAIL 		/* 발주 담당자 이메일	 */
+                     , f.PlaceText	as CNST_AREA_LOCAT		/*	공사현장텍스트 */
+                     , f.BuildingPeriod	as CNST_PERD		/* 	공사기간 */
+					 , f.WhyCorrect		as CORCT_RSN		/* 	정정사유 */
+					 , f.QualifyContents as RMRK			/* 	참가자격 텍스트( 공고 특이사항 ) */
+					 , NoticeMemo as TALK_MEMO
+					 , ExplainLimit as SITE_DESC_MANDA_YN
+                     , IF(f.SmallBusiness = 1,'Y','N') as SCHTWR_YN						/* 소상공인(비대상:0, 대상: 1)  */
+                     , IF(f.LadyBusiness = 1,'Y','N') as FEMALE_HNDC_CO_YN	/* 여성기업(비대상:0, 대상: 1)  */
+					 , IF(UnusualElectric = 1,'Y','N') as PCLR_NOTI_YN 	/*  PATENT_NTCNQ_YN 에서 변경 */
+					 , IF(Deposit=0,'N','Y') as GURAMT_PYM_YN
+					 , IF(BreakDown=0,'N','Y') as SPCFCT_BID_YN
+					 , IF(BiddingSystem=1,'Y','N') as MNPR_BID_YN
+					 , IF(BaseOption=1,'Y','N') as ACRSLT_IGNOR_YN
+					 , IF(IconNumber= 6,'Y',IF((select IconNumber from HashTables.ContractMethod where Number = a.ContractMethod )=6,'Y','N')) as VLTRN_NOTI_YN
+                     , IF(BidType=2,'Y','N') as PRVSTL_NOTI_YN
+			         , IF(BidType=1,'N','Y') as ELECT_BID_YN
+                     , IF(JoinFinishTime=0, null,FROM_UNIXTIME(JoinFinishTime)) as SPDMAGMT_FIN_DT  
+					 , IF(e.NoticeType&1,'Y','N') as UNION_TRSF_PSBL_YN
+					 , IF(e.NoticeType&2,'Y','N') as SHR_TRSF_PSBL_YN
+					 , IF(e.NoticeType&4,'Y','N') as AREA_DUTY_YN
+					 , IF(e.LicenseType=2,'N','Y') as SINGL_PSBL_YN			         
+                     , IF(Grade=0,'Y','N') as NEWEST_NOTI_YN  
+					 , a.idx as PRF_ID
+					 , FROM_UNIXTIME(InputTime) as PRF_DT
+			 FROM N_NoticeBase a
+			 LEFT JOIN NoticeTables.S_NoticeResult b
+			 FORCE INDEX FOR JOIN(KeyBaseTable)
+             ON a.idx = b.KeyBaseTable
+             and b.UpdateTime = (select max(UpdateTime) from S_NoticeResult where KeyBaseTable=a.idx)
+			 LEFT JOIN NoticeTables.S_FinallyBider c
+			 FORCE INDEX FOR JOIN(KeyBaseTable)
+			 ON	a.idx = c.KeyBaseTable
+			 and c.RegDate = (select max(RegDate) from S_FinallyBider where KeyBaseTable=a.idx)
+             LEFT JOIN NoticeTables.S_NoticeCharger d
+             FORCE INDEX FOR JOIN(KeyBaseTable)
+             On a.idx = d.KeyBaseTable
+             LEFT JOIN NoticeTables.S_NoticeSimpleInfo e
+             FORCE INDEX FOR JOIN(KeyBaseTable)
+             ON a.idx = e.KeyBaseTable
+             AND  e.Long1 != '' 
+             LEFT JOIN NoticeTables.NoticeContents f
+             FORCE INDEX FOR JOIN(KeyBaseTable)
+             ON a.idx = f.KeyBaseTable
+             WHERE a.noticeNumber =#{notiNo}
+             AND a.noticeOrgan = #{rpsntOrgnzCd}
+             AND a.noticeChasu = #{notiSeq}
+             AND a.noticePart = #{notiKindCd}
+             AND a.ReBidCount = coalesce( #{rebidNo}, 0 )
+             AND not exists (select 1 from NoticeTables.convertLog where a.Idx = keyBaseTable and InputTime =#{lastUpdtDt})
+              ]]>
+	</select>
+
+	<!-- ,Complete = if( #{notiProgStatCd}=9, 3, #{notiProgStatCd} )    -->
+	<update id="updateNotice" parameterType="jinbid.converter.comn.vo.Notice">
+		UPDATE 
+		<if test="test">NoticeTables.tmpBase</if>
+		<if test="!test">NoticeTables.N_NoticeBase</if>
+		SET 
+			<if test="siteDescPlac!=null">	ExplainPlace = #{siteDescPlac}, </if>
+			<if test="baseAmt > 0" >	BasePrice = #{baseAmt}, </if>
+				AssumPrice = #{presmAmt},
+			<if test="dwnlmtRt > 0">NoticeLowLimit = #{dwnlmtRt}, </if>
+			<if test="minAsRt > 0"	> perLowLimit = #{minAsRt}, </if>
+			<if test="maxAsRt > 0">	perHighLimit = #{maxAsRt}, </if>
+				grade = #{sortOrdr},
+			<if test="talkMemo!=null"> NoticeMemo = #{talkMemo}, </if>
+			<if test="siteDescDt!=null">	ExplainTime =unix_timestamp( #{siteDescDt} ), </if>
+				Complete = IF(#{notiProgStatCd}=9,3 , #{notiProgStatCd}),
+				OrderFrom = #{orderFrom},
+				OrderFromSecond = #{orderFromSecond}
+		WHERE
+				Idx = #{prfId}
+	</update>
+	
+	<insert id="insertLog" parameterType="jinbid.converter.comn.vo.Notice">
+		INSERT INTO NoticeTables.convertLog
+		(keybaseTable,InputTime,notiId)
+		values
+		(#{prfId},#{lastUpdtDt},#{id})
+	</insert>
+	
+	<select id="selectNoticeSimpleInfo" parameterType="jinbid.converter.comn.vo.Notice" resultType="jinbid.converter.comn.vo.NoticeSimpleInfo">
+		SELECT #{prfId} keyBaseTable,
+						(	SELECT concat('|', group_concat(Category separator '|') )
+							FROM	(	SELECT distinct Category 
+											 FROM	S_NoticeLicense 
+											 WHERE keyBaseTable = #{prfId}  
+											 ORDER BY 1 ) a
+						) LongLicense,
+						COALESCE( (	SELECT concat('|', group_concat(Category separator '|') )
+													FROM(	SELECT distinct Category FROM S_NoticeLicense 
+																	WHERE	keyBaseTable = #{prfId} 
+																	AND NoticePart = 0 
+																	ORDER BY 1 ) a ) ,'') Long1,
+						COALESCE( (	SELECT concat('|', group_concat(Category separator '|') )
+													FROM(	SELECT distinct Category FROM S_NoticeLicense 
+																	WHERE	keyBaseTable = #{prfId} 
+																	AND NoticePart = 1 
+																	ORDER BY 1 ) a ) ,'') Long2,
+						COALESCE( (	SELECT concat('|', group_concat(Category separator '|') )
+													FROM(	SELECT distinct Category FROM S_NoticeLicense 
+																	WHERE	keyBaseTable = #{prfId} 
+																	AND NoticePart = 2 
+																	ORDER BY 1 ) a ) ,'') Long3,
+						(	SELECT group_concat(longLocal)
+ 							FROM (	SELECT concat('|',Local1,Local2) longLocal 
+											FROM  S_NoticeLocal 
+											WHERE  KeyBaseTable= #{prfId} 
+											ORDER BY 1) a) LongLocal,
+						( select IF('Y'=#{unionTrsfPsblYn},1,0) +IF('Y'=#{shrTrsfPsblYn},2,0) +IF('Y'=#{areaDutyYn},1,0)  ) NoticeType
+						
+	</select>
+	
+	<!--   UPDATE NoticeTables.S_NoticeSimpleInfo  -->
+	<update id="updateNoticeSimpleInfo"  parameterType="jinbid.converter.comn.vo.Notice">
+		UPDATE 
+		<if test="test">NoticeTables.tmpSimpleInfo</if> 
+		<if test="!test" >NoticeTables.S_NoticeSimleInfo</if>
+		<trim prefix="SET" suffixOverrides=",">
+			<if test="areaUpdate">	
+				LongLocal = #{noticeSimpleInfo.LongLocal},	
+			</if>
+			<if test="licnsUpdate">	
+				LongLicense = #{noticeSimpleInfo.LongLicense},
+				Long1= #{noticeSimpleInfo.Long1},
+				Long2= #{noticeSimpleInfo.Long2},
+				Long3= #{noticeSimpleInfo.Long3}
+			</if>
+		</trim>
+		WHERE keyBaseTable = #{prfId}		
+	</update>
+	
+	
+	
+	<insert id="upsertNoticeContents"  parameterType="jinbid.converter.comn.vo.Notice"  >
+		INSERT INTO 
+			<if test="test">tmpContents</if>
+			<if test="!test">	NoticeContents </if>
+		(	SmallBusiness,LadyBusiness,ContractRatio,keyBaseTable,CheckOk,PleaseOpen,
+			 PlaceLink,PlaceText,BuildingPeriod,WhyCorrect,BasicContents,QualifyContents,GoodsNumber) 
+		VALUES
+			(IF(#{schtwrYn}='Y',1,0),
+			 IF(#{femaleHndcCoYn}='Y',1,0),
+			 0,
+			 #{prfId}, 0,0,'',
+			 coalesce(#{cnstAreaLocat},''),
+			 #{cnstPerd},
+			 coalesce(#{corctRsn},''),'',
+			 #{rmrk},'')
+		ON DUPLICATE KEY 
+		UPDATE
+				SmallBusiness = IF(#{schtwrYn}='Y',1,0),
+				<if test="cnstAreaLocat !=null">PlaceText = #{cnstAreaLocat},  </if>
+				<if test="cnstPerd!=null">BuildingPeriod = #{cnstPerd},  </if>
+				<if test="corctRsn!=null">WhyCorrect = #{corctRsn}, </if>
+				<if test="rmrk !=null ">QualifyContents = #{rmrk},</if>
+				LadyBusiness = IF(#{femaleHndrCoYn}='Y',1,0)
+</insert>
+	
+	
+</mapper>

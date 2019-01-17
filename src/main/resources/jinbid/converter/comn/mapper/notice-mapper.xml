@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="jinbid.converter.comn.mapper.NoticeDao">
+	
+    <!--        공고 조회    -->
+    <select id="selectNotice" parameterType="Map"  resultType="jinbid.converter.comn.vo.Notice">
+        SELECT 
+        		ID,
+				NOTI_NO,
+				NOTI_SEQ,
+				NOTI_KIND_CD,
+				NOTI_PROG_STAT_CD,
+				NOTI_DSTNCT_CD,
+				RPSNT_ORGNZ_CD,
+				REBID_NO,
+				OPBD_DT,
+				SITE_DESC_DT,
+				SITE_DESC_PLAC,
+				PRESM_AMT,
+				BASE_AMT,
+				SORT_ORDR,
+				NEWEST_NOTI_YN,
+				DWNLMT_RT,
+				MIN_AS_RT,
+				MAX_AS_RT,
+				UNION_TRSF_PSBL_YN,
+				SHR_TRSF_PSBL_YN,
+				AREA_DUTY_YN,
+				SINGL_PSBL_YN,
+							CNST_AREA_LOCAT,
+							RMRK,
+				IF(   NOTI_KIND_CD = '0', /* 시설 */
+        				IF(  CFMT_UNDWRT_ST_ID = '5',
+        					 '2',
+               				IF(   
+               						  CFMT_UNDWRT_ST_ID IN ('1','3'), '1' ,  IF( RPSNT_ORGNZ_CD IN ('2','5','6','8','9','10','13'), '2',  '0' )
+                				)
+        				),
+        				IF( NOTI_KIND_CD = '1' AND RPSNT_ORGNZ_CD = '2', '2', '0' )
+				) OrderFrom,
+				IF(   NOTI_KIND_CD = '0', /* 시설 */
+        				IF(   CFMT_UNDWRT_ST_ID = '5',
+        					 '1',
+                			IF( 	CFMT_UNDWRT_ST_ID IN ('1','3'),	
+                				  	IF( CFMT_UNDWRT_ST_ID = '1' ,'3','5'), 
+		                        	IF(  RPSNT_ORGNZ_CD IN ('2','5','6','9','10','13'), 
+        		                		   '2', 
+                		        		   IF( RPSNT_ORGNZ_CD IN ('3','8'), '0' , '0' ))
+                				)
+        				),
+        				IF( NOTI_KIND_CD = '0' AND RPSNT_ORGNZ_CD = '2', '2', '0' )
+				 ) OrderFromSecond,
+				TALK_MEMO,
+				LAST_UPDT_DT,
+				LAST_AMNDR,
+				PRF_ID,
+				PRF_DT
+		FROM NOTI
+		WHERE LAST_UPDT_DT > date_add(now(),interval -100 minute)
+		AND OPBD_STAT_CD = 0
+		AND NOTI_PROG_STAT_CD != 1
+		AND USE_YN='Y'
+		AND RPSNT_ORGNZ_CD = 1
+		AND NOTI_NO='20190117006'
+		LIMIT #{_skiprows}, #{_pagesize}
+    </select>
+    
+    
+</mapper>
